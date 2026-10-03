@@ -7,13 +7,14 @@
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; background: #0f0f0f; color: #f2f2f2; font-family: -apple-system, system-ui, sans-serif; overflow: hidden; touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
-  #app { height: 100%; display: flex; flex-direction: column; padding: calc(env(safe-area-inset-top, 0px) + 20px) 20px calc(env(safe-area-inset-bottom, 0px) + 20px); }
-  #hud { display: flex; justify-content: space-between; font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; opacity: .9; }
+  #app { height: 100%; height: 100dvh; width: 100%; display: flex; flex-direction: column; padding: calc(env(safe-area-inset-top, 0px) + 56px) calc(env(safe-area-inset-right, 0px) + 20px) calc(env(safe-area-inset-bottom, 0px) + 20px) calc(env(safe-area-inset-left, 0px) + 20px); }
+  #hud { display: flex; flex-direction: column; align-items: center; gap: 2px; font-variant-numeric: tabular-nums; }
+  #score { font-size: 64px; font-weight: 700; line-height: 1; letter-spacing: -1px; }
   #lives { display: flex; gap: 8px; align-items: center; justify-content: center; padding: 12px 0; }
   #lives i { width: 8px; height: 8px; border-radius: 50%; background: #f2f2f2; }
   #lives i.lost { background: #3a3a3a; }
   #grid-wrap { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
-  #grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; aspect-ratio: 1; width: min(100%, 100vh - 200px); }
+  #grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; aspect-ratio: 1; width: min(100%, 100vh - 260px, 100dvh - 260px); max-width: 100%; }
   .hole { position: relative; border-radius: 50%; border: 2px solid #2a2a2a; }
   .mole { position: absolute; inset: 12%; border-radius: 50%; background: #f2f2f2; transform: scale(0); transition: transform .12s ease-out; }
   .hole.up .mole { transform: scale(1); }
@@ -22,12 +23,13 @@
   #overlay.hidden { display: none; }
   h1 { font-size: 40px; font-weight: 700; letter-spacing: -.5px; }
   p { color: #8a8a8a; font-size: 17px; line-height: 1.4; }
+  #vp { position: fixed; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); left: 0; right: 0; text-align: center; font-size: 12px; color: #555; font-variant-numeric: tabular-nums; }
   #start { font: inherit; font-weight: 600; font-size: 18px; padding: 16px 40px; border: 0; border-radius: 999px; background: #f2f2f2; color: #0f0f0f; }
 </style>
 </head>
 <body>
 <div id="app">
-  <div id="hud"><span id="score">0</span><span id="time">0s</span></div>
+  <div id="hud"><span id="score">0</span></div>
   <div id="lives"><i></i><i></i><i></i></div>
   <div id="grid-wrap"><div id="grid"></div></div>
 </div>
@@ -35,15 +37,18 @@
   <h1>Whack</h1>
   <p>Tap the circles before they disappear.<br>Miss three and it's over.</p>
   <button id="start">Play</button>
+  <div id="vp"></div>
 </div>
 <script>
 (() => {
   const grid = document.getElementById('grid');
   const scoreEl = document.getElementById('score');
-  const timeEl = document.getElementById('time');
   const livesEl = document.getElementById('lives');
   const overlay = document.getElementById('overlay');
   const startBtn = document.getElementById('start');
+  const vpEl = document.getElementById('vp');
+  const showVp = () => { vpEl.textContent = `${window.innerWidth}×${window.innerHeight} @${window.devicePixelRatio}x`; };
+  showVp(); window.addEventListener('resize', showVp);
 
   const holes = [];
   for (let i = 0; i < 9; i++) {
@@ -55,7 +60,7 @@
     holes.push({ el: h, up: false, timer: null });
   }
 
-  let running = false, score = 0, misses = 0, startedAt = 0, spawnTimer = null, clock = null;
+  let running = false, score = 0, misses = 0, startedAt = 0, spawnTimer = null;
 
   const elapsed = () => (performance.now() - startedAt) / 1000;
   const spawnDelay = () => Math.max(350, 1000 - elapsed() * 18);
@@ -101,18 +106,17 @@
 
   function start() {
     score = 0; misses = 0; startedAt = performance.now();
-    scoreEl.textContent = '0'; timeEl.textContent = '0s';
+    scoreEl.textContent = '0';
     [...livesEl.children].forEach(i => i.classList.remove('lost'));
     holes.forEach(h => { h.up = false; clearTimeout(h.timer); h.el.classList.remove('up', 'hit'); });
     overlay.classList.add('hidden');
     running = true;
-    clock = setInterval(() => { timeEl.textContent = Math.floor(elapsed()) + 's'; }, 250);
     spawnTimer = setTimeout(spawn, 500);
   }
 
   function end() {
     running = false;
-    clearTimeout(spawnTimer); clearInterval(clock);
+    clearTimeout(spawnTimer);
     holes.forEach(h => { clearTimeout(h.timer); h.up = false; h.el.classList.remove('up'); });
     overlay.querySelector('h1').textContent = score;
     overlay.querySelector('p').textContent = `whacked in ${Math.floor(elapsed())}s`;
