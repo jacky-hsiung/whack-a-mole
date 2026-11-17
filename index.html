@@ -25,6 +25,7 @@
   p { color: #8a8a8a; font-size: 17px; line-height: 1.4; }
   #vp { position: fixed; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); left: 0; right: 0; text-align: center; font-size: 12px; color: #555; font-variant-numeric: tabular-nums; }
   #start { font: inherit; font-weight: 600; font-size: 18px; padding: 16px 40px; border: 0; border-radius: 999px; background: #f2f2f2; color: #0f0f0f; }
+  #cta { font: inherit; font-weight: 600; font-size: 16px; padding: 14px 32px; border: 2px solid #f2f2f2; border-radius: 999px; color: #f2f2f2; text-decoration: none; }
 </style>
 </head>
 <body>
@@ -37,8 +38,10 @@
   <h1>Whack</h1>
   <p>Tap the circles before they disappear.<br>Miss three and it's over.</p>
   <button id="start">Play</button>
+  <a id="cta" href="https://discord.com" target="_blank" rel="noopener">Learn more</a>
   <div id="vp"></div>
 </div>
+<script src="embedded-app-sdk.js"></script>
 <script>
 (() => {
   const grid = document.getElementById('grid');
@@ -47,6 +50,26 @@
   const overlay = document.getElementById('overlay');
   const startBtn = document.getElementById('start');
   const vpEl = document.getElementById('vp');
+  const CTA_URL = 'https://discord.com';
+  const CTA_LABEL = 'Learn more';
+  const DISCORD_CLIENT_ID = '1550165620283416576';
+  const cta = document.getElementById('cta');
+  cta.href = CTA_URL; cta.textContent = CTA_LABEL;
+
+  // Inside a Discord Activity the iframe sandbox blocks target=_blank, so links
+  // must go through the SDK, which shows the "leaving Discord" confirm.
+  // Outside Discord (local browser testing) the plain anchor is used.
+  const inDiscord = new URLSearchParams(location.search).has('frame_id');
+  let sdkReady = null;
+  if (inDiscord && window.DiscordEmbeddedAppSDK) {
+    const sdk = new DiscordEmbeddedAppSDK.DiscordSDK(DISCORD_CLIENT_ID);
+    sdkReady = sdk.ready().then(() => sdk).catch(() => null);
+    cta.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const s = await sdkReady;
+      if (s) s.commands.openExternalLink({ url: CTA_URL });
+    });
+  }
   const showVp = () => { vpEl.textContent = `${window.innerWidth}×${window.innerHeight} @${window.devicePixelRatio}x`; };
   showVp(); window.addEventListener('resize', showVp);
 
